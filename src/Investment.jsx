@@ -15,14 +15,14 @@ const Investment = () => {
   const [repairsRate, setRepairsRate] = useState(10);
   const [managementRate, setManagementRate] = useState(10);
   
-  const interestRate = 7.5;
+  const interestRate = 6.85;
   const propertyTaxRate = 1.5;
-  const homeInsurance = 2110;
+  const homeInsurance = purchasePrice * 0.0082;
   const closingCostRate = 5;
   const mipRate = 0.55;
   
   const getDownPaymentRate = () => {
-    if (propertyType === 'single' && isFHA) return 3.5;
+    if (propertyType === 'multi' && isFHA) return 3.5;
     if (propertyType === 'single') return 20;
     return 25;
   };
@@ -33,6 +33,7 @@ const Investment = () => {
     if (propertyType === 'single') {
       setUnits(1);
       setUnitRents({ 1: unitRents[1] || '' });
+      setIsFHA(false); // Reset FHA when switching to single family
     }
   }, [propertyType]);
   
@@ -57,7 +58,7 @@ const Investment = () => {
     const monthlyInsurance = homeInsurance / 12;
     let monthlyMIP = 0;
     
-    if (isFHA && propertyType === 'single') {
+    if (isFHA && propertyType === 'multi') {
       monthlyMIP = (loanAmount * mipRate / 100) / 12;
     }
     
@@ -151,7 +152,7 @@ const Investment = () => {
                 </button>
               </div>
               
-              {propertyType === 'single' && (
+              {propertyType === 'multi' && (
                 <div className="mt-4">
                   <label className="flex items-center gap-2 text-gray-700">
                     <input
@@ -309,7 +310,7 @@ const Investment = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2">Management Rate (%)</label>
+                  <label className="block text-gray-700 mb-2">Rental Commission (%)</label>
                   <input
                     type="number"
                     value={managementRate}
@@ -395,7 +396,7 @@ const Investment = () => {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Property Management</span>
+                      <span className="text-gray-600">Rental Commission</span>
                       <span className="font-medium">{formatCurrency(results.management)}</span>
                     </div>
                     <div className="flex justify-between">
@@ -417,7 +418,7 @@ const Investment = () => {
               </div>
             )}
             
-            {isFHA && propertyType === 'single' && (
+            {isFHA && propertyType === 'multi' && (
               <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
                 <AlertCircle className="text-yellow-600 mt-1" size={20} />
                 <div className="text-sm text-yellow-800">
