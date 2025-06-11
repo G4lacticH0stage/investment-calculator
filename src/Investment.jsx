@@ -8,12 +8,11 @@ const Investment = () => {
   const [purchasePrice, setPurchasePrice] = useState('');
   const [unitRents, setUnitRents] = useState({});
   const [loanDuration, setLoanDuration] = useState('30');
-  const [utilities, setUtilities] = useState(0);
-  const [maintenance, setMaintenance] = useState(1200);
-  const [landscaping, setLandscaping] = useState(1200);
-  const [vacancyRate, setVacancyRate] = useState(10);
-  const [repairsRate, setRepairsRate] = useState(10);
-  const [managementRate, setManagementRate] = useState(10);
+  const [monthlyUtilities, setMonthlyUtilities] = useState('');
+  const [maintenance, setMaintenance] = useState('');
+  const [landscaping, setLandscaping] = useState('');
+  const [vacancyRate, setVacancyRate] = useState('');
+  const [managementRate, setManagementRate] = useState('');
   
   const interestRate = 6.85;
   const propertyTaxRate = 1.5;
@@ -65,15 +64,13 @@ const Investment = () => {
     const totalMonthlyPayment = monthlyPayment + propertyTax + monthlyInsurance + monthlyMIP;
     
     const totalRent = Object.values(unitRents).reduce((sum, rent) => sum + (parseFloat(rent) || 0), 0);
-    const effectiveRent = totalRent * (1 - vacancyRate / 100);
-    const monthlyManagement = effectiveRent * (managementRate / 100);
-    const monthlyRepairs = effectiveRent * (repairsRate / 100);
-    const monthlyMaintenance = maintenance / 12;
-    const monthlyLandscaping = landscaping / 12;
-    const monthlyUtilities = utilities;
+    const effectiveRent = totalRent * (1 - (parseFloat(vacancyRate) || 0) / 100);
+    const monthlyManagement = effectiveRent * ((parseFloat(managementRate) || 0) / 100);
+    const monthlyMaintenance = (parseFloat(maintenance) || 0) / 12;
+    const monthlyLandscaping = (parseFloat(landscaping) || 0) / 12;
     
-    const totalExpenses = totalMonthlyPayment + monthlyManagement + monthlyRepairs + 
-                         monthlyMaintenance + monthlyLandscaping + monthlyUtilities;
+    const totalExpenses = totalMonthlyPayment + monthlyManagement + 
+                         monthlyMaintenance + monthlyLandscaping + (parseFloat(monthlyUtilities) || 0);
     
     const monthlyCashFlow = effectiveRent - totalExpenses;
     const yearlyCashFlow = monthlyCashFlow * 12;
@@ -93,18 +90,17 @@ const Investment = () => {
       insurance: monthlyInsurance,
       mip: monthlyMIP,
       management: monthlyManagement,
-      repairs: monthlyRepairs,
       maintenance: monthlyMaintenance,
       landscapingExpense: monthlyLandscaping,
-      utilities: monthlyUtilities,
+      utilities: parseFloat(monthlyUtilities) || 0,
       totalExpenses
     });
   };
   
   useEffect(() => {
     calculateMortgage();
-  }, [purchasePrice, propertyType, isFHA, unitRents, loanDuration, utilities, 
-      maintenance, landscaping, vacancyRate, repairsRate, managementRate]);
+  }, [purchasePrice, propertyType, isFHA, unitRents, loanDuration, monthlyUtilities, 
+      maintenance, landscaping, vacancyRate, managementRate]);
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -240,16 +236,16 @@ const Investment = () => {
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Expenses</h3>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Expenses</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 mb-2">Utilities</label>
+                  <label className="block text-gray-700 mb-2">Monthly Utilities</label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
                     <input
                       type="number"
-                      value={utilities}
-                      onChange={(e) => setUtilities(parseFloat(e.target.value) || 0)}
+                      value={monthlyUtilities}
+                      onChange={(e) => setMonthlyUtilities(e.target.value)}
                       placeholder="0"
                       className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -263,8 +259,8 @@ const Investment = () => {
                     <input
                       type="number"
                       value={maintenance}
-                      onChange={(e) => setMaintenance(parseFloat(e.target.value) || 0)}
-                      placeholder="1,200"
+                      onChange={(e) => setMaintenance(e.target.value)}
+                      placeholder="1200"
                       className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -277,8 +273,8 @@ const Investment = () => {
                     <input
                       type="number"
                       value={landscaping}
-                      onChange={(e) => setLandscaping(parseFloat(e.target.value) || 0)}
-                      placeholder="1,200"
+                      onChange={(e) => setLandscaping(e.target.value)}
+                      placeholder="1200"
                       className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -288,33 +284,25 @@ const Investment = () => {
             
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Rates & Percentages</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-2">Vacancy Rate (%)</label>
                   <input
                     type="number"
                     value={vacancyRate}
-                    onChange={(e) => setVacancyRate(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setVacancyRate(e.target.value)}
+                    placeholder="10"
                     className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2">Repairs Rate (%)</label>
-                  <input
-                    type="number"
-                    value={repairsRate}
-                    onChange={(e) => setRepairsRate(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-gray-700 mb-2">Rental Commission (%)</label>
+                  <label className="block text-gray-700 mb-2">Property Management (%)</label>
                   <input
                     type="number"
                     value={managementRate}
-                    onChange={(e) => setManagementRate(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setManagementRate(e.target.value)}
+                    placeholder="10"
                     className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -341,7 +329,7 @@ const Investment = () => {
                     <div>
                       <p className="text-gray-600">Monthly Rental Income</p>
                       <p className="text-2xl font-bold text-green-600">{formatCurrency(results.monthlyRent)}</p>
-                      <p className="text-sm text-gray-500">After {vacancyRate}% vacancy</p>
+                      <p className="text-sm text-gray-500">After {parseFloat(vacancyRate) || 0}% vacancy</p>
                     </div>
                     
                     <div>
@@ -396,12 +384,12 @@ const Investment = () => {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Rental Commission</span>
+                      <span className="text-gray-600">Property Management</span>
                       <span className="font-medium">{formatCurrency(results.management)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Repairs & Maintenance</span>
-                      <span className="font-medium">{formatCurrency(results.repairs + results.maintenance)}</span>
+                      <span className="text-gray-600">Maintenance</span>
+                      <span className="font-medium">{formatCurrency(results.maintenance)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Landscaping</span>
@@ -409,7 +397,7 @@ const Investment = () => {
                     </div>
                     {results.utilities > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Utilities</span>
+                        <span className="text-gray-600">Monthly Utilities</span>
                         <span className="font-medium">{formatCurrency(results.utilities)}</span>
                       </div>
                     )}
