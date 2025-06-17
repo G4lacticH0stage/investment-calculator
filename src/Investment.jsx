@@ -15,8 +15,15 @@ const Investment = () => {
   const [maintenanceRate, setMaintenanceRate] = useState('');
   const [customDownPayment, setCustomDownPayment] = useState('');
   const [useCustomDownPayment, setUseCustomDownPayment] = useState(false);
+  const [customInterestRate, setCustomInterestRate] = useState('');
+  const [useCustomInterestRate, setUseCustomInterestRate] = useState(false);
   
-  const interestRate = 6.85;
+  const getInterestRate = () => {
+    if (useCustomInterestRate && customInterestRate) {
+      return parseFloat(customInterestRate);
+    }
+    return 6.85;
+  };
   const propertyTaxRate = 1.5;
   const homeInsurance = purchasePrice * 0.0082;
   const closingCostRate = 5;
@@ -49,6 +56,7 @@ const Investment = () => {
     const closingCosts = price * (closingCostRate / 100);
     const totalCashNeeded = downPayment + closingCosts;
     
+    const interestRate = getInterestRate();
     const monthlyRate = interestRate / 100 / 12;
     const numPayments = parseInt(loanDuration) * 12;
     
@@ -99,14 +107,15 @@ const Investment = () => {
       landscapingExpense: monthlyLandscaping,
       utilities: parseFloat(monthlyUtilities) || 0,
       totalExpenses,
-      downPaymentRate
+      downPaymentRate,
+      interestRate
     });
   };
   
   useEffect(() => {
     calculateMortgage();
   }, [purchasePrice, propertyType, isFHA, unitRents, loanDuration, monthlyUtilities, 
-      landscaping, vacancyRate, managementRate, maintenanceRate, customDownPayment, useCustomDownPayment]);
+      landscaping, vacancyRate, managementRate, maintenanceRate, customDownPayment, useCustomDownPayment, customInterestRate, useCustomInterestRate]);
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -254,6 +263,43 @@ const Investment = () => {
                 )}
               </div>
             </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Interest Rate</h3>
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={useCustomInterestRate}
+                    onChange={(e) => setUseCustomInterestRate(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Use custom interest rate
+                </label>
+                
+                {useCustomInterestRate && (
+                  <div className="max-w-xs">
+                    <label className="block text-gray-700 mb-2">Interest Rate (%)</label>
+                    <input
+                      type="number"
+                      value={customInterestRate}
+                      onChange={(e) => setCustomInterestRate(e.target.value)}
+                      placeholder="6.85"
+                      min="0"
+                      max="30"
+                      step="0.01"
+                      className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+                
+                {!useCustomInterestRate && (
+                  <div className="text-sm text-gray-600">
+                    Using default: 6.85% interest rate
+                  </div>
+                )}
+              </div>
+            </div>
             
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Rent per Unit</h3>
@@ -312,10 +358,10 @@ const Investment = () => {
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-4">Rates & Percentages</h3>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Rates and Percentages of Rent</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-gray-700 mb-2">Vacancy Rate (%)</label>
+                  <label className="block text-gray-700 mb-2">Vacancy (%)</label>
                   <input
                     type="number"
                     value={vacancyRate}
@@ -326,7 +372,7 @@ const Investment = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2">Property Management (%)</label>
+                  <label className="block text-gray-700 mb-2">Management (%)</label>
                   <input
                     type="number"
                     value={managementRate}
@@ -337,7 +383,7 @@ const Investment = () => {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 mb-2">Maintenance (% of rent)</label>
+                  <label className="block text-gray-700 mb-2">Maintenance (%)</label>
                   <input
                     type="number"
                     value={maintenanceRate}
@@ -362,7 +408,7 @@ const Investment = () => {
                       <p className="text-gray-600">Total Cash Needed</p>
                       <p className="text-2xl font-bold text-gray-800">{formatCurrency(results.totalCashNeeded)}</p>
                       <p className="text-sm text-gray-500">
-                        Down Payment ({results.downPaymentRate.toFixed(1)}%): {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)}
+                        Down Payment ({results.downPaymentRate.toFixed(1)}%): {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)} | Interest Rate: {results.interestRate.toFixed(2)}%
                       </p>
                     </div>
                     
