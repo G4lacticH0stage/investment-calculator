@@ -27,7 +27,8 @@ const Investment = () => {
   const propertyTaxRate = 1.5;
   const homeInsurance = purchasePrice * 0.0082;
   const closingCostRate = 5;
-  const mipRate = 0.55;
+  const mipRate = 0.55; // FHA MIP rate
+  const pmiRate = 0.5; // Conventional PMI rate
   
   const getDownPaymentRate = () => {
     if (useCustomDownPayment && customDownPayment) {
@@ -45,6 +46,16 @@ const Investment = () => {
       setUnits(1);
       setUnitRents({ 1: unitRents[1] || '' });
       setIsFHA(false); // Reset FHA when switching to single family
+    } else if (propertyType === 'multi') {
+      setUnits(2); // Set to 2 units for multi-family
+      // Initialize rent fields for 2 units if they don't exist
+      const newUnitRents = { ...unitRents };
+      for (let i = 1; i <= 2; i++) {
+        if (!newUnitRents[i]) {
+          newUnitRents[i] = '';
+        }
+      }
+      setUnitRents(newUnitRents);
     }
   }, [propertyType]);
   
@@ -69,12 +80,19 @@ const Investment = () => {
     const propertyTax = (price * propertyTaxRate / 100) / 12;
     const monthlyInsurance = homeInsurance / 12;
     let monthlyMIP = 0;
+    let monthlyPMI = 0;
     
+    // FHA MIP for multi-family properties
     if (isFHA && propertyType === 'multi') {
       monthlyMIP = (loanAmount * mipRate / 100) / 12;
     }
     
-    const totalMonthlyPayment = monthlyPayment + propertyTax + monthlyInsurance + monthlyMIP;
+    // PMI for conventional loans with less than 20% down
+    if (!isFHA && downPaymentRate < 20) {
+      monthlyPMI = (loanAmount * pmiRate / 100) / 12;
+    }
+    
+    const totalMonthlyPayment = monthlyPayment + propertyTax + monthlyInsurance + monthlyMIP + monthlyPMI;
     
     const totalRent = Object.values(unitRents).reduce((sum, rent) => sum + (parseFloat(rent) || 0), 0);
     const effectiveRent = totalRent * (1 - (parseFloat(vacancyRate) || 0) / 100);
@@ -102,6 +120,7 @@ const Investment = () => {
       propertyTax,
       insurance: monthlyInsurance,
       mip: monthlyMIP,
+      pmi: monthlyPMI,
       management: monthlyManagement,
       maintenance: monthlyMaintenance,
       landscapingExpense: monthlyLandscaping,
@@ -469,6 +488,12 @@ const Investment = () => {
                         <span className="font-medium">{formatCurrency(results.mip)}</span>
                       </div>
                     )}
+                    {results.pmi > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">PMI (Conventional)</span>
+                        <span className="font-medium">{formatCurrency(results.pmi)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-600">Property Management</span>
                       <span className="font-medium">{formatCurrency(results.management)}</span>
@@ -498,6 +523,16 @@ const Investment = () => {
                 <div className="text-sm text-yellow-800">
                   <p className="font-semibold mb-1">FHA Loan Information</p>
                   <p>With an FHA loan, you can purchase with as little as 3.5% down. However, you'll need to pay Mortgage Insurance Premium (MIP) of 0.55% annually, which adds {results ? formatCurrency(results.mip) : '$0'} to your monthly payment.</p>
+                </div>
+              </div>
+            )}
+            
+            {!isFHA && results && results.pmi > 0 && (
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="text-blue-600 mt-1" size={20} />
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-1">PMI Information</p>
+                  <p>With less than 20% down payment, you'll need to pay Private Mortgage Insurance (PMI) of 0.5% annually, which adds {formatCurrency(results.pmi)} to your monthly payment. PMI can typically be removed once you reach 20% equity.</p>
                 </div>
               </div>
             )}
