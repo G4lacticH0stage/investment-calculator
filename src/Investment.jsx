@@ -95,15 +95,16 @@ const Investment = () => {
     const totalMonthlyPayment = monthlyPayment + propertyTax + monthlyInsurance + monthlyMIP + monthlyPMI;
     
     const totalRent = Object.values(unitRents).reduce((sum, rent) => sum + (parseFloat(rent) || 0), 0);
-    const effectiveRent = totalRent * (1 - (parseFloat(vacancyRate) || 0) / 100);
+    const vacancyExpense = totalRent * ((parseFloat(vacancyRate) || 0) / 100);
+    const effectiveRent = totalRent - vacancyExpense;
     const monthlyManagement = effectiveRent * ((parseFloat(managementRate) || 0) / 100);
     const monthlyMaintenance = effectiveRent * ((parseFloat(maintenanceRate) || 0) / 100);
     const monthlyLandscaping = (parseFloat(landscaping) || 0) / 12;
     
     const totalExpenses = totalMonthlyPayment + monthlyManagement + 
-                         monthlyMaintenance + monthlyLandscaping + (parseFloat(monthlyUtilities) || 0);
+                         monthlyMaintenance + monthlyLandscaping + (parseFloat(monthlyUtilities) || 0) + vacancyExpense;
     
-    const monthlyCashFlow = effectiveRent - totalExpenses;
+    const monthlyCashFlow = totalRent - totalExpenses;
     const yearlyCashFlow = monthlyCashFlow * 12;
     const cashOnCashReturn = totalCashNeeded > 0 ? (yearlyCashFlow / totalCashNeeded) * 100 : 0;
     
@@ -112,7 +113,9 @@ const Investment = () => {
       closingCosts,
       totalCashNeeded,
       monthlyPayment: totalMonthlyPayment,
-      monthlyRent: effectiveRent,
+      monthlyRent: totalRent,
+      effectiveRent,
+      vacancyExpense,
       monthlyCashFlow,
       yearlyCashFlow,
       cashOnCashReturn,
@@ -434,7 +437,7 @@ const Investment = () => {
                     <div>
                       <p className="text-gray-600">Monthly Rental Income</p>
                       <p className="text-2xl font-bold text-green-600">{formatCurrency(results.monthlyRent)}</p>
-                      <p className="text-sm text-gray-500">After {parseFloat(vacancyRate) || 0}% vacancy</p>
+                      <p className="text-sm text-gray-500">Gross rental income</p>
                     </div>
                     
                     <div>
@@ -482,6 +485,12 @@ const Investment = () => {
                       <span className="text-gray-600">Home Insurance</span>
                       <span className="font-medium">{formatCurrency(results.insurance)}</span>
                     </div>
+                    {results.vacancyExpense > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Vacancy ({parseFloat(vacancyRate) || 0}%)</span>
+                        <span className="font-medium">{formatCurrency(results.vacancyExpense)}</span>
+                      </div>
+                    )}
                     {results.mip > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">MIP (FHA)</span>
