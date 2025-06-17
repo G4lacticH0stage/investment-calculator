@@ -9,10 +9,12 @@ const Investment = () => {
   const [unitRents, setUnitRents] = useState({});
   const [loanDuration, setLoanDuration] = useState('30');
   const [monthlyUtilities, setMonthlyUtilities] = useState('');
-  const [maintenance, setMaintenance] = useState('');
   const [landscaping, setLandscaping] = useState('');
   const [vacancyRate, setVacancyRate] = useState('');
   const [managementRate, setManagementRate] = useState('');
+  const [maintenanceRate, setMaintenanceRate] = useState('');
+  const [customDownPayment, setCustomDownPayment] = useState('');
+  const [useCustomDownPayment, setUseCustomDownPayment] = useState(false);
   
   const interestRate = 6.85;
   const propertyTaxRate = 1.5;
@@ -21,6 +23,9 @@ const Investment = () => {
   const mipRate = 0.55;
   
   const getDownPaymentRate = () => {
+    if (useCustomDownPayment && customDownPayment) {
+      return parseFloat(customDownPayment);
+    }
     if (propertyType === 'multi' && isFHA) return 3.5;
     if (propertyType === 'single') return 20;
     return 25;
@@ -66,7 +71,7 @@ const Investment = () => {
     const totalRent = Object.values(unitRents).reduce((sum, rent) => sum + (parseFloat(rent) || 0), 0);
     const effectiveRent = totalRent * (1 - (parseFloat(vacancyRate) || 0) / 100);
     const monthlyManagement = effectiveRent * ((parseFloat(managementRate) || 0) / 100);
-    const monthlyMaintenance = (parseFloat(maintenance) || 0) / 12;
+    const monthlyMaintenance = effectiveRent * ((parseFloat(maintenanceRate) || 0) / 100);
     const monthlyLandscaping = (parseFloat(landscaping) || 0) / 12;
     
     const totalExpenses = totalMonthlyPayment + monthlyManagement + 
@@ -93,14 +98,15 @@ const Investment = () => {
       maintenance: monthlyMaintenance,
       landscapingExpense: monthlyLandscaping,
       utilities: parseFloat(monthlyUtilities) || 0,
-      totalExpenses
+      totalExpenses,
+      downPaymentRate
     });
   };
   
   useEffect(() => {
     calculateMortgage();
   }, [purchasePrice, propertyType, isFHA, unitRents, loanDuration, monthlyUtilities, 
-      maintenance, landscaping, vacancyRate, managementRate]);
+      landscaping, vacancyRate, managementRate, maintenanceRate, customDownPayment, useCustomDownPayment]);
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -211,6 +217,43 @@ const Investment = () => {
                 </select>
               </div>
             </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Down Payment</h3>
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={useCustomDownPayment}
+                    onChange={(e) => setUseCustomDownPayment(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Use custom down payment percentage
+                </label>
+                
+                {useCustomDownPayment && (
+                  <div className="max-w-xs">
+                    <label className="block text-gray-700 mb-2">Down Payment (%)</label>
+                    <input
+                      type="number"
+                      value={customDownPayment}
+                      onChange={(e) => setCustomDownPayment(e.target.value)}
+                      placeholder="20"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+                
+                {!useCustomDownPayment && (
+                  <div className="text-sm text-gray-600">
+                    Using default: {propertyType === 'single' ? '20%' : (isFHA ? '3.5% (FHA)' : '25%')} down payment
+                  </div>
+                )}
+              </div>
+            </div>
             
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Rent per Unit</h3>
@@ -253,20 +296,6 @@ const Investment = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2">Annual Maintenance</label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
-                    <input
-                      type="number"
-                      value={maintenance}
-                      onChange={(e) => setMaintenance(e.target.value)}
-                      placeholder="1200"
-                      className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                
-                <div>
                   <label className="block text-gray-700 mb-2">Annual Landscaping</label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -284,7 +313,7 @@ const Investment = () => {
             
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Rates & Percentages</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-2">Vacancy Rate (%)</label>
                   <input
@@ -306,6 +335,17 @@ const Investment = () => {
                     className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2">Maintenance (% of rent)</label>
+                  <input
+                    type="number"
+                    value={maintenanceRate}
+                    onChange={(e) => setMaintenanceRate(e.target.value)}
+                    placeholder="5"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
             
@@ -322,7 +362,7 @@ const Investment = () => {
                       <p className="text-gray-600">Total Cash Needed</p>
                       <p className="text-2xl font-bold text-gray-800">{formatCurrency(results.totalCashNeeded)}</p>
                       <p className="text-sm text-gray-500">
-                        Down Payment: {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)}
+                        Down Payment ({results.downPaymentRate.toFixed(1)}%): {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)}
                       </p>
                     </div>
                     
@@ -388,7 +428,7 @@ const Investment = () => {
                       <span className="font-medium">{formatCurrency(results.management)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Maintenance</span>
+                      <span className="text-gray-600">Maintenance ({parseFloat(maintenanceRate) || 0}% of rent)</span>
                       <span className="font-medium">{formatCurrency(results.maintenance)}</span>
                     </div>
                     <div className="flex justify-between">
