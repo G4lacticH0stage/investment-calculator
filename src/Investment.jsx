@@ -17,6 +17,10 @@ const Investment = () => {
   const [useCustomDownPayment, setUseCustomDownPayment] = useState(false);
   const [customInterestRate, setCustomInterestRate] = useState('');
   const [useCustomInterestRate, setUseCustomInterestRate] = useState(false);
+  const [customPropertyTax, setCustomPropertyTax] = useState('');
+  const [useCustomPropertyTax, setUseCustomPropertyTax] = useState(false);
+  const [customMIP, setCustomMIP] = useState('');
+  const [useCustomMIP, setUseCustomMIP] = useState(false);
   
   const getInterestRate = () => {
     if (useCustomInterestRate && customInterestRate) {
@@ -27,8 +31,12 @@ const Investment = () => {
   const propertyTaxRate = 1.5;
   const homeInsurance = purchasePrice * 0.0082;
   const closingCostRate = 5;
-  const mipRate = 0.55; // FHA MIP rate
+  const mipUpfrontRate = 1.75; // Upfront MIP rate
   const pmiRate = 0.5; // Conventional PMI rate
+  
+  const getMIPRate = () => {
+    return 0.4; // Default MIP rate for calculation
+  };
   
   const getDownPaymentRate = () => {
     if (useCustomDownPayment && customDownPayment) {
@@ -64,7 +72,19 @@ const Investment = () => {
     const downPaymentRate = getDownPaymentRate();
     const downPayment = price * (downPaymentRate / 100);
     const loanAmount = price - downPayment;
-    const closingCosts = price * (closingCostRate / 100);
+    
+    // Calculate closing costs including upfront MIP for FHA loans
+    let closingCosts = price * (closingCostRate / 100);
+    let upfrontMIP = 0;
+    
+    // FHA loan detection: explicit FHA checkbox OR 3.5% down payment
+    const isFHALoan = isFHA || downPaymentRate === 3.5;
+    
+    if (isFHALoan) {
+      upfrontMIP = loanAmount * (mipUpfrontRate / 100);
+      closingCosts += upfrontMIP;
+    }
+    
     const totalCashNeeded = downPayment + closingCosts;
     
     const interestRate = getInterestRate();
@@ -77,18 +97,30 @@ const Investment = () => {
                        (Math.pow(1 + monthlyRate, numPayments) - 1);
     }
     
-    const propertyTax = (price * propertyTaxRate / 100) / 12;
+    // Property tax calculation - custom or default
+    let propertyTax;
+    if (useCustomPropertyTax && customPropertyTax) {
+      propertyTax = parseFloat(customPropertyTax) / 12; // Convert annual to monthly
+    } else {
+      propertyTax = (price * propertyTaxRate / 100) / 12; // Default calculation
+    }
+    
     const monthlyInsurance = homeInsurance / 12;
     let monthlyMIP = 0;
     let monthlyPMI = 0;
     
-    // FHA MIP for multi-family properties
-    if (isFHA && propertyType === 'multi') {
-      monthlyMIP = (loanAmount * mipRate / 100) / 12;
+    // FHA MIP for any property type with FHA loan (explicit checkbox or 3.5% down)
+    if (isFHALoan) {
+      if (useCustomMIP && customMIP) {
+        monthlyMIP = parseFloat(customMIP);
+      } else {
+        const mipRate = getMIPRate();
+        monthlyMIP = (loanAmount * mipRate / 100) / 12;
+      }
     }
     
-    // PMI for conventional loans with less than 20% down
-    if (!isFHA && downPaymentRate < 20) {
+    // PMI for conventional loans with less than 20% down (but not FHA)
+    if (!isFHALoan && downPaymentRate < 20) {
       monthlyPMI = (loanAmount * pmiRate / 100) / 12;
     }
     
@@ -108,9 +140,27 @@ const Investment = () => {
     const yearlyCashFlow = monthlyCashFlow * 12;
     const cashOnCashReturn = totalCashNeeded > 0 ? (yearlyCashFlow / totalCashNeeded) * 100 : 0;
     
+    // Calculate when PMI/MIP can be removed (22% equity)
+    const targetEquity = 0.22;
+    const targetLoanBalance = price * (1 - targetEquity); // 78% of original value
+    const initialLoanBalance = loanAmount;
+    const principalNeeded = initialLoanBalance - targetLoanBalance;
+    
+    // Calculate monthly principal payment (simplified)
+    const totalInterestPaid = (monthlyPayment * numPayments) - loanAmount;
+    const avgMonthlyPrincipal = loanAmount / numPayments; // Simplified calculation
+    
+    let paymentsToRemovePMI = 0;
+    if (monthlyPMI > 0) {
+      paymentsToRemovePMI = Math.ceil(principalNeeded / avgMonthlyPrincipal);
+    }
+    
     setResults({
       downPayment,
       closingCosts,
+      upfrontMIP,
+      isFHALoan,
+      mipRate: getMIPRate(),
       totalCashNeeded,
       monthlyPayment: totalMonthlyPayment,
       monthlyRent: totalRent,
@@ -129,6 +179,7 @@ const Investment = () => {
       landscapingExpense: monthlyLandscaping,
       utilities: parseFloat(monthlyUtilities) || 0,
       totalExpenses,
+      paymentsToRemovePMI,
       downPaymentRate,
       interestRate
     });
@@ -137,7 +188,7 @@ const Investment = () => {
   useEffect(() => {
     calculateMortgage();
   }, [purchasePrice, propertyType, isFHA, unitRents, loanDuration, monthlyUtilities, 
-      landscaping, vacancyRate, managementRate, maintenanceRate, customDownPayment, useCustomDownPayment, customInterestRate, useCustomInterestRate]);
+      landscaping, vacancyRate, managementRate, maintenanceRate, customDownPayment, useCustomDownPayment, customInterestRate, useCustomInterestRate, customPropertyTax, useCustomPropertyTax, customMIP, useCustomMIP]);
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -287,6 +338,44 @@ const Investment = () => {
             </div>
 
             <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">MIP (FHA Loans)</h3>
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={useCustomMIP}
+                    onChange={(e) => setUseCustomMIP(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Use custom MIP amount
+                </label>
+                
+                {useCustomMIP && (
+                  <div className="max-w-xs">
+                    <label className="block text-gray-700 mb-2">Monthly MIP Amount</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
+                      <input
+                        type="number"
+                        value={customMIP}
+                        onChange={(e) => setCustomMIP(e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {!useCustomMIP && (
+                  <div className="text-sm text-gray-600">
+                    Using default: 0.4% of loan amount annually
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Interest Rate</h3>
               <div className="space-y-4">
                 <label className="flex items-center gap-2 text-gray-700">
@@ -318,6 +407,44 @@ const Investment = () => {
                 {!useCustomInterestRate && (
                   <div className="text-sm text-gray-600">
                     Using default: 6.85% interest rate
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Property Tax</h3>
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={useCustomPropertyTax}
+                    onChange={(e) => setUseCustomPropertyTax(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Use custom property tax amount
+                </label>
+                
+                {useCustomPropertyTax && (
+                  <div className="max-w-xs">
+                    <label className="block text-gray-700 mb-2">Annual Property Tax</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
+                      <input
+                        type="number"
+                        value={customPropertyTax}
+                        onChange={(e) => setCustomPropertyTax(e.target.value)}
+                        placeholder="6,750"
+                        min="0"
+                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {!useCustomPropertyTax && (
+                  <div className="text-sm text-gray-600">
+                    Using default: 1.5% of purchase price annually
                   </div>
                 )}
               </div>
@@ -430,7 +557,7 @@ const Investment = () => {
                       <p className="text-gray-600">Total Cash Needed</p>
                       <p className="text-2xl font-bold text-gray-800">{formatCurrency(results.totalCashNeeded)}</p>
                       <p className="text-sm text-gray-500">
-                        Down Payment ({results.downPaymentRate.toFixed(1)}%): {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)} | Interest Rate: {results.interestRate.toFixed(2)}%
+                        Down Payment ({results.downPaymentRate.toFixed(1)}%): {formatCurrency(results.downPayment)} + Closing Costs: {formatCurrency(results.closingCosts)}{results.upfrontMIP > 0 ? ` (includes ${formatCurrency(results.upfrontMIP)} upfront MIP)` : ''} | Interest Rate: {results.interestRate.toFixed(2)}%
                       </p>
                     </div>
                     
@@ -493,14 +620,19 @@ const Investment = () => {
                     )}
                     {results.mip > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">MIP (FHA)</span>
+                        <span className="text-gray-600">MIP</span>
                         <span className="font-medium">{formatCurrency(results.mip)}</span>
                       </div>
                     )}
                     {results.pmi > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">PMI (Conventional)</span>
-                        <span className="font-medium">{formatCurrency(results.pmi)}</span>
+                        <span className="text-gray-600">PMI</span>
+                        <span className="font-medium">
+                          {formatCurrency(results.pmi)}
+                          <span className="text-xs text-gray-500 ml-2">
+                            (removable after {results.paymentsToRemovePMI} payments)
+                          </span>
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between">
@@ -526,12 +658,16 @@ const Investment = () => {
               </div>
             )}
             
-            {isFHA && propertyType === 'multi' && (
+            {results && results.isFHALoan && (
               <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
                 <AlertCircle className="text-yellow-600 mt-1" size={20} />
                 <div className="text-sm text-yellow-800">
-                  <p className="font-semibold mb-1">FHA Loan Information</p>
-                  <p>With an FHA loan, you can purchase with as little as 3.5% down. However, you'll need to pay Mortgage Insurance Premium (MIP) of 0.55% annually, which adds {results ? formatCurrency(results.mip) : '$0'} to your monthly payment.</p>
+                  <p className="font-semibold mb-1">FHA Loan Detected</p>
+                  <p>Based on your {isFHA ? 'FHA loan selection' : '3.5% down payment'}, this is treated as an FHA loan. You'll need to pay:</p>
+                  <ul className="mt-2 ml-4 list-disc">
+                    <li>Upfront MIP: 1.75% of loan amount ({results ? formatCurrency(results.upfrontMIP) : '$0'}) added to closing costs</li>
+                    <li>Monthly MIP: {results ? formatCurrency(results.mip) : '$0'}/month{!useCustomMIP && ' (0.4% of loan amount annually)'}</li>
+                  </ul>
                 </div>
               </div>
             )}
@@ -541,7 +677,8 @@ const Investment = () => {
                 <AlertCircle className="text-blue-600 mt-1" size={20} />
                 <div className="text-sm text-blue-800">
                   <p className="font-semibold mb-1">PMI Information</p>
-                  <p>With less than 20% down payment, you'll need to pay Private Mortgage Insurance (PMI) of 0.5% annually, which adds {formatCurrency(results.pmi)} to your monthly payment. PMI can typically be removed once you reach 20% equity.</p>
+                  <p>With less than 20% down payment, you'll need to pay Private Mortgage Insurance (PMI) of 0.5% annually, which adds {formatCurrency(results.pmi)} to your monthly payment.</p>
+                  <p className="mt-2 font-medium">Good news: PMI can be removed after {results.paymentsToRemovePMI} payments (approximately {Math.round(results.paymentsToRemovePMI / 12)} years) when you reach 22% equity in the home.</p>
                 </div>
               </div>
             )}
