@@ -35,7 +35,7 @@ const Investment = () => {
   const pmiRate = 0.5; // Conventional PMI rate
   
   const getMIPRate = () => {
-    return 0.4; // Default MIP rate for calculation
+    return 0.55; // Default MIP rate for calculation
   };
   
   const getDownPaymentRate = () => {
@@ -369,7 +369,7 @@ const Investment = () => {
                 
                 {!useCustomMIP && (
                   <div className="text-sm text-gray-600">
-                    Using default: 0.4% of loan amount annually
+                    Using default: 0.55% of loan amount annually
                   </div>
                 )}
               </div>
